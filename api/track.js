@@ -1,3 +1,7 @@
+export const config = {
+  maxDuration: 30
+};
+ 
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -36,10 +40,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: data.error.message || "EasyPost error" });
     }
  
-    // If status is unknown, poll up to 4 times with 2s delays
+    // If status is unknown, poll up to 8 times with 3s delays (24s max)
     if (data.status === "unknown" && data.id) {
-      for (let i = 0; i < 4; i++) {
-        await new Promise(r => setTimeout(r, 2000));
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 3000));
         const pollRes = await fetch("https://api.easypost.com/v2/trackers/" + data.id, {
           method: "GET",
           headers: { "Authorization": authHeader }
