@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -12,6 +11,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "EasyPost API key not configured" });
   }
  
+  const authHeader = "Basic " + Buffer.from(EP_KEY + ":").toString("base64");
+ 
   try {
     const { tracking_code, carrier } = req.body;
  
@@ -23,19 +24,32 @@ export default async function handler(req, res) {
     const body = { tracker: { tracking_code: tracking_code } };
     if (carrier) body.tracker.carrier = carrier;
  
-    const response = await fetch("https://api.easypost.com/v2/trackers", {
+    const createRes = await fetch("https://api.easypost.com/v2/trackers", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Basic " + Buffer.from(EP_KEY + ":").toString("base64")
-      },
+      headers: { "Content-Type": "application/json", "Authorization": authHeader },
       body: JSON.stringify(body)
     });
  
-    const data = await response.json();
+    let data = await createRes.json();
  
     if (data.error) {
       return res.status(400).json({ error: data.error.message || "EasyPost error" });
+    }
+ 
+    // If status is unknown, poll up to 4 times with 2s delays
+    if (data.status === "unknown" && data.id) {
+      for (let i = 0; i < 4; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollRes = await fetch("https://api.easypost.com/v2/trackers/" + data.id, {
+          method: "GET",
+          headers: { "Authorization": authHeader }
+        });
+        const pollData = await pollRes.json();
+        if (pollData.status && pollData.status !== "unknown") {
+          data = pollData;
+          break;
+        }
+      }
     }
  
     const events = (data.tracking_details || []).map(function(e) {
