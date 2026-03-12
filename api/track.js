@@ -1,3 +1,7 @@
+export const config = {
+  maxDuration: 55
+};
+ 
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -19,12 +23,14 @@ export default async function handler(req, res) {
     let data;
  
     if (tracker_id) {
+      // Fetch existing tracker by ID
       const response = await fetch("https://api.easypost.com/v2/trackers/" + tracker_id, {
         method: "GET",
         headers: { "Authorization": authHeader }
       });
       data = await response.json();
     } else {
+      // Create new tracker
       if (!tracking_code) {
         return res.status(400).json({ error: "Missing tracking_code" });
       }
@@ -40,6 +46,23 @@ export default async function handler(req, res) {
  
     if (data.error) {
       return res.status(400).json({ error: data.error.message || "EasyPost error" });
+    }
+ 
+    // If status is unknown and we have a tracker ID, poll until resolved
+    // Poll up to 10 times with 5s delays (50s max, within 55s function limit)
+    if (data.status === "unknown" && data.id) {
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        const pollRes = await fetch("https://api.easypost.com/v2/trackers/" + data.id, {
+          method: "GET",
+          headers: { "Authorization": authHeader }
+        });
+        const pollData = await pollRes.json();
+        if (pollData.status && pollData.status !== "unknown") {
+          data = pollData;
+          break;
+        }
+      }
     }
  
     const events = (data.tracking_details || []).map(function(e) {
