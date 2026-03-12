@@ -14,22 +14,30 @@ export default async function handler(req, res) {
   const authHeader = "Basic " + Buffer.from(EP_KEY + ":").toString("base64");
  
   try {
-    const { tracking_code, carrier } = req.body;
+    const { tracking_code, tracker_id } = req.body;
  
-    if (!tracking_code) {
-      return res.status(400).json({ error: "Missing tracking_code" });
+    let data;
+ 
+    if (tracker_id) {
+      // Fetch existing tracker by ID (for retries - uses GET, returns fresh data)
+      const response = await fetch("https://api.easypost.com/v2/trackers/" + tracker_id, {
+        method: "GET",
+        headers: { "Authorization": authHeader }
+      });
+      data = await response.json();
+    } else {
+      // Create new tracker
+      if (!tracking_code) {
+        return res.status(400).json({ error: "Missing tracking_code" });
+      }
+      const body = { tracker: { tracking_code: tracking_code } };
+      const response = await fetch("https://api.easypost.com/v2/trackers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": authHeader },
+        body: JSON.stringify(body)
+      });
+      data = await response.json();
     }
- 
-    const body = { tracker: { tracking_code: tracking_code } };
-    if (carrier) body.tracker.carrier = carrier;
- 
-    const response = await fetch("https://api.easypost.com/v2/trackers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": authHeader },
-      body: JSON.stringify(body)
-    });
- 
-    const data = await response.json();
  
     if (data.error) {
       return res.status(400).json({ error: data.error.message || "EasyPost error" });
@@ -47,6 +55,7 @@ export default async function handler(req, res) {
  
     return res.status(200).json({
       success: true,
+      tracker_id: data.id,
       carrier: data.carrier,
       status: data.status,
       est_delivery_date: data.est_delivery_date,
@@ -58,3 +67,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error: " + err.message });
   }
 }
+ 
+
+
+
+
+
+
+
