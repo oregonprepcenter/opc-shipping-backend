@@ -13,23 +13,26 @@ export default async function handler(req, res) {
   }
  
   try {
-    const { tracking_code, carrier } = req.body;
+    const { from_address, to_address, parcel } = req.body;
  
-    if (!tracking_code) {
-      return res.status(400).json({ error: "Missing tracking_code" });
+    if (!from_address || !to_address || !parcel) {
+      return res.status(400).json({ error: "Missing from_address, to_address, or parcel" });
     }
  
-    // Create tracker
-    const body = { tracker: { tracking_code: tracking_code } };
-    if (carrier) body.tracker.carrier = carrier;
- 
-    const response = await fetch("https://api.easypost.com/v2/trackers", {
+    // Create shipment on EasyPost to get rates
+    const response = await fetch("https://api.easypost.com/v2/shipments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Basic " + Buffer.from(EP_KEY + ":").toString("base64")
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        shipment: {
+          from_address: from_address,
+          to_address: to_address,
+          parcel: parcel
+        }
+      })
     });
  
     const data = await response.json();
@@ -38,23 +41,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: data.error.message || "EasyPost error" });
     }
  
-    const events = (data.tracking_details || []).map(function(e) {
+    // Return shipment ID (needed to buy label) and rates
+    const rates = (data.rates || []).map(function(r) {
       return {
-        status: e.status,
-        message: e.message,
-        datetime: e.datetime,
-        city: e.tracking_location ? e.tracking_location.city : "",
-        state: e.tracking_location ? e.tracking_location.state : ""
+        id: r.id,
+        carrier: r.carrier,
+        service: r.service,
+        rate: r.rate,
+        currency: r.currency,
+        delivery_days: r.est_delivery_days || r.delivery_days,
+        delivery_date: r.delivery_date,
+        retail_rate: r.retail_rate
       };
+    }).sort(function(a, b) {
+      return parseFloat(a.rate) - parseFloat(b.rate);
     });
  
     return res.status(200).json({
       success: true,
-      carrier: data.carrier,
-      status: data.status,
-      est_delivery_date: data.est_delivery_date,
-      tracking_code: data.tracking_code,
-      events: events
+      shipment_id: data.id,
+      rates: rates
     });
  
   } catch (err) {
