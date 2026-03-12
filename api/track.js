@@ -14,23 +14,22 @@ export default async function handler(req, res) {
   const authHeader = "Basic " + Buffer.from(EP_KEY + ":").toString("base64");
  
   try {
-    const { tracking_code, tracker_id } = req.body;
+    const { tracking_code, tracker_id, carrier } = req.body;
  
     let data;
  
     if (tracker_id) {
-      // Fetch existing tracker by ID (for retries - uses GET, returns fresh data)
       const response = await fetch("https://api.easypost.com/v2/trackers/" + tracker_id, {
         method: "GET",
         headers: { "Authorization": authHeader }
       });
       data = await response.json();
     } else {
-      // Create new tracker
       if (!tracking_code) {
         return res.status(400).json({ error: "Missing tracking_code" });
       }
       const body = { tracker: { tracking_code: tracking_code } };
+      if (carrier) body.tracker.carrier = carrier;
       const response = await fetch("https://api.easypost.com/v2/trackers", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": authHeader },
@@ -67,11 +66,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error: " + err.message });
   }
 }
- 
-
-
-
-
-
-
-
