@@ -99,6 +99,21 @@ module.exports = async function handler(req, res) {
 
   var mergedData = Object.assign({ clientName: clientName || "" }, data || {});
 
+  // DEV MODE: prevent real emails
+if (process.env.IS_DEV === "true") {
+  console.log("[DEV MODE] Email skipped:", {
+    to: clientEmail,
+    type,
+    data: mergedData
+  });
+
+  return res.status(200).json({
+    success: true,
+    dev: true,
+    message: "Email skipped in dev mode"
+  });
+}
+  
   try {
     await sgMail.send({
       to: clientEmail,
