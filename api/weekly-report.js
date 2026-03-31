@@ -3,6 +3,17 @@ module.exports = async function handler(req, res) {
   var fromEmail = process.env.OPC_FROM_EMAIL || "contact@oregonprepcenter.com";
   var supabaseUrl = process.env.SUPABASE_URL;
   var supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+  // DEV MODE: prevent sending weekly emails
+if (process.env.IS_DEV === "true") {
+  console.log("[DEV MODE] Weekly report skipped");
+
+  return res.status(200).json({
+    success: true,
+    dev: true,
+    message: "Weekly report skipped in dev mode"
+  });
+}
  
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({ error: "Missing SUPABASE env vars" });
