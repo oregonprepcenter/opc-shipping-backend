@@ -1,13 +1,6 @@
 {
-  "name": "opc-backend",
-  "version": "1.0.0",
-  "main": "api/index.js",
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
-    "@sendgrid/mail": "^7.7.0",
-    "node-fetch": "^2.6.7"
-  },
-  "engines": {
-    "node": "18.x"
+    "@sendgrid/mail": "^7.7.0"
   }
 }
