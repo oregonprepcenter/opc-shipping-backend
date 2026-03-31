@@ -24,6 +24,21 @@ module.exports = async function handler(req, res) {
 
   var fromEmail = process.env.OPC_FROM_EMAIL || "contact@oregonprepcenter.com";
 
+  // DEV MODE: prevent real welcome emails
+if (process.env.IS_DEV === "true") {
+  console.log("[DEV MODE] Onboard email skipped:", {
+    name,
+    email,
+    tempPassword
+  });
+
+  return res.status(200).json({
+    success: true,
+    dev: true,
+    message: "Welcome email skipped in dev mode"
+  });
+}
+  
   try {
     await sgMail.send({
       to: email,
