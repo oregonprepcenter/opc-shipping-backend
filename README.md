@@ -7,6 +7,10 @@ Vercel serverless backend for EasyPost shipping API integration.
 - `POST /api/rates` — Get live shipping rates from all carriers
 - `POST /api/buy-label` — Purchase a shipping label
 - `POST /api/track` — Track a package
+- `POST /api/shipping-agent` — AI shipping assistant (Claude + web search) for
+  carrier comparisons, transit times, customs, label troubleshooting, etc.
+  Body: `{ "question": "...", "context": { ... }, "history": [ ... ] }`.
+  Requires `ANTHROPIC_API_KEY` in Vercel environment variables.
 
 ## Deploy to Vercel
 
